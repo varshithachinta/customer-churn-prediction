@@ -67,3 +67,38 @@ if st.button("Predict Churn", type="primary"):
         st.progress(prob)
     else:
         st.error(f"API Error: {response.text}")
+
+st.header("Batch Prediction from CSV")
+st.write("Upload a CSV with the same columns as the training data (no customerID or Churn column needed).")
+
+uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
+
+if uploaded_file is not None:
+    batch_df = pd.read_csv(uploaded_file)
+    st.write(f"Loaded {len(batch_df)} customers")
+    st.dataframe(batch_df.head())
+
+    if st.button("Run Batch Prediction"):
+        customers_list = batch_df.to_dict(orient="records")
+        batch_payload = {"customers": customers_list}
+
+        with st.spinner("Scoring customers..."):
+            response = requests.post(f"{API_URL}/predict/batch", json=batch_payload)
+
+        if response.status_code == 200:
+            predictions = response.json()["predictions"]
+            results_df = batch_df.copy()
+            results_df["churn_probability"] = [p["churn_probability"] for p in predictions]
+            results_df["churn_prediction"] = [p["churn_prediction"] for p in predictions]
+            results_df = results_df.sort_values("churn_probability", ascending=False)
+
+            st.subheader("Results (sorted by risk)")
+            st.dataframe(results_df)
+
+            high_risk_count = results_df["churn_prediction"].sum()
+            st.metric("High-Risk Customers", f"{high_risk_count} / {len(results_df)}")
+
+            csv_output = results_df.to_csv(index=False).encode("utf-8")
+            st.download_button("Download Results as CSV", csv_output, "churn_predictions.csv", "text/csv")
+        else:
+            st.error(f"API Error: {response.text}")
