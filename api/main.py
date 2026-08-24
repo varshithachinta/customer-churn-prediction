@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import joblib
 import pandas as pd
 import os
+from typing import List
 
 app = FastAPI(title="Customer Churn Prediction API")
 
@@ -84,3 +85,15 @@ def predict(customer: CustomerData):
         "churn_prediction": bool(prediction),
         "churn_probability": round(float(probability), 4)
     }
+
+class BatchCustomerData(BaseModel):
+    customers: List[CustomerData]
+
+
+@app.post("/predict/batch")
+def predict_batch(batch: BatchCustomerData):
+    results = []
+    for customer in batch.customers:
+        result = predict(customer)
+        results.append(result)
+    return {"predictions": results}
