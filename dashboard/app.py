@@ -1,8 +1,19 @@
 import streamlit as st
 import requests
 import pandas as pd
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_PATH = os.path.join(BASE_DIR, "..", "data", "WA_Fn-UseC_-Telco-Customer-Churn.csv")
 
 API_URL = "http://127.0.0.1:8000"
+
+
+@st.cache_data
+def load_raw_data():
+    df = pd.read_csv(DATA_PATH)
+    df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce').fillna(0)
+    return df
 
 st.set_page_config(page_title="Customer Churn Predictor", layout="wide")
 st.title("Customer Churn Prediction Dashboard")
@@ -102,3 +113,22 @@ if uploaded_file is not None:
             st.download_button("Download Results as CSV", csv_output, "churn_predictions.csv", "text/csv")
         else:
             st.error(f"API Error: {response.text}")
+
+st.header("Churn Insights (Historical Data)")
+
+raw_df = load_raw_data()
+
+tab1, tab2, tab3 = st.tabs(["Churn by Contract", "Churn by Internet Service", "Overall Churn Rate"])
+
+with tab1:
+    contract_churn = pd.crosstab(raw_df['Contract'], raw_df['Churn'], normalize='index')
+    st.bar_chart(contract_churn)
+
+with tab2:
+    internet_churn = pd.crosstab(raw_df['InternetService'], raw_df['Churn'], normalize='index')
+    st.bar_chart(internet_churn)
+
+with tab3:
+    churn_rate = raw_df['Churn'].value_counts(normalize=True)
+    st.bar_chart(churn_rate)
+    st.metric("Overall Churn Rate", f"{churn_rate['Yes']:.1%}")
