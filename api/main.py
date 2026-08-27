@@ -43,8 +43,7 @@ def root():
 
 @app.post("/predict")
 def predict(customer: CustomerData):
-    input_df = pd.DataFrame([customer.dict()])
-
+    input_df = pd.DataFrame([customer.model_dump()])
     input_encoded = pd.get_dummies(input_df, columns=[
         'gender', 'Partner', 'Dependents', 'PhoneService', 'MultipleLines',
         'InternetService', 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection',
